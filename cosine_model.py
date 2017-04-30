@@ -1,7 +1,7 @@
 """
-Find sentence to query similarity using word2vec and the L2 norm. The most
-similar sentence in the context paragraph should have the answer within 
-it.
+Find sentence to query similarity using word2vec and the cosine distance.
+The most similar sentence in the context paragraph should have the 
+answer within it.
 
 """
 
@@ -10,20 +10,23 @@ import json
 import nltk
 import re
 from collections import Counter
+from tqdm import tqdm
 
 def word_tokenize(tokens):
   return [token.replace("''", '"').replace("``",'"') for token in nltk.word_tokenize(tokens)]
 
-def get_word2vec(words, dim=50):
+def get_word2vec(words):
   """
   dim is the number of dimensions for the glove pretrained embeddings. 
   """
   source_dir = os.path.dirname(os.path.realpath(__file__))
   data_dir = os.path.join(source_dir, 'datasets')
-  glove = os.path.join(data_dir, "glove.6B.{}d.txt".format(dim))
+  glove = os.path.join(data_dir, "glove.42B.300d.txt")
+  word2vec = {}
+  total = 1917494
   with open(glove, 'r') as f:
-    for line in f:
-      ary = line.lstrip().rsplit().split(" ")
+    for line in tqdm(f, total=total):
+      ary = line.lstrip().rstrip().split(" ")
       word = ary[0]
       vector = list(map(float,ary[1:]))
       if word in words:
@@ -69,9 +72,9 @@ def prepro(data_dir=None):
     with open(data_dir) as f:
       train_data = json.load(f)
 
-  contexts, questions, answers = []
-  words = []
-  for article in train_data['data']:
+  contexts, questions, answers = [], [], [] 
+  words = set() 
+  for article in tqdm(train_data['data']):
     for paragraph in article['paragraphs']:
       context = paragraph["context"]
       context.replace("''", '"')
@@ -83,12 +86,12 @@ def prepro(data_dir=None):
 
       for sent in xi:
         for word in sent:
-          words.append(word)
+          words.add(word)
 
       for qa in paragraph['qas']:
         qi = word_tokenize(qa['question']) 
         for word in qi:
-          words.append(word)
+          words.add(word)
         questions.append(qi)
 
         for answer in qa['answers']:
