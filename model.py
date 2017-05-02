@@ -35,7 +35,8 @@ def run():
   questions = data['questions']
   predictions = []
   for c,qs in tqdm(zip(contexts, questions), total=len(contexts)):
-
+    if len(c) == 1:
+      continue
     # Get vector embedding of context
     ce = []
     for sent in c:

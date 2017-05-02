@@ -2,8 +2,11 @@
 Functions for evaluating the performance of the model on the 
 squad dataset
 
-f1 and EM evaluations are from the squad evaluation scripts.
+Modified the official squad dataset evaluation script
 """
+import string
+import re
+from collections import Counter
 
 def normalize_answer(s):
   """Lower text and remove punctuation, articles, and extra whitespace."""
@@ -25,8 +28,8 @@ def normalize_answer(s):
 def f1_score(prediction, answer):
   prediction_tokens = normalize_answer(prediction).split()
   answer_tokens = normalize_answer(answer).split()
-  common = Couter(prediction_tokens) & Counter(answer_tokens)
-  num_sum = sum(common.values())
+  common = Counter(prediction_tokens) & Counter(answer_tokens)
+  num_same = sum(common.values())
   if num_same == 0:
     return 0
   precision = 1.0 * num_same / len(prediction_tokens)
@@ -34,7 +37,20 @@ def f1_score(prediction, answer):
   f1 = (2 * precision * recall) / (precision + recall) 
   return f1
 
-def evaluate(predictions, answers):
+def sentence_score(prediction, ground_truths):
+  for ground_truth in ground_truths:
+    if ground_truth in prediction:
+      return 1
+  return 0
+
+def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
+  scores_for_ground_truths = []
+  for ground_truth in ground_truths:
+    score = metric_fn(prediction, ground_truth)
+    scores_for_ground_truths.append(score)
+  return max(scores_for_ground_truths)
+
+def evaluate(predictions, answerss):
   """
   Returns a tuple of (F1 score, EM score, sentence score)
 
@@ -45,5 +61,13 @@ def evaluate(predictions, answers):
   finding the span within the sentence with the answer. The SQUAD 
   leaderboard and evaluation scripts only consider the F1 and EM score.
   """
-
+  f1 = sscore = total = 0 
+  for prediction, answers in zip(predictions, answerss):
+    total += 1
+    f1 += metric_max_over_ground_truths(f1_score, prediction, answers)
+    sscore += metric_max_over_ground_truths(sentence_score, prediction, answers)
+  sscore = 100.0 * sscore / total
+  f1 = 100.0 * f1 / total
+  
+  return {'sscore':sscore, 'f1':f1}
 
